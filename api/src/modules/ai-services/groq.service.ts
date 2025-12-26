@@ -16,6 +16,10 @@ export class GroqService {
     return this.groq.chat.completions.create({
       messages: [
         {
+          role: 'system',
+          content: 'Você é um assistente útil e amigável. Responda sempre em Português do Brasil de forma concisa.',
+        },
+        {
           role: 'user',
           content: prompt,
         },
