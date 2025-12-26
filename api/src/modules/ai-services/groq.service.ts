@@ -17,7 +17,8 @@ export class GroqService {
       messages: [
         {
           role: 'system',
-          content: 'Você é um assistente útil e amigável. Responda sempre em Português do Brasil de forma concisa.',
+          content:
+            'Você é um assistente direto e objetivo. Responda sempre em Português do Brasil com respostas extremamente curtas e secas. Sem introduções ou conclusões.',
         },
         {
           role: 'user',
