@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      target: development
+    container_name: nexus_voice_api
+    ports:
+      - "3000:3000" # HTTP
+      - "8080:8080" # WebSocket
+    volumes:
+      - ./src:/app/src
+    environment:
+      - NODE_ENV=development
+    command: npm run start:dev
+    networks:
+      - nexus_net
+
+networks:
+  nexus_net:
+    driver: bridge
