@@ -45,7 +45,7 @@ sequenceDiagram
     participant Gateway as NestJS Gateway
     participant STT as Deepgram (Ear)
     participant LLM as Groq/Llama3 (Brain)
-    participant TTS as Deepgram Aura (Voice)
+    participant TTS as OpenAITTS/Deepgram (Voice)
 
     User->>Gateway: WebSocket Audio Stream (Binary)
     Gateway->>STT: Piping Audio Stream
@@ -58,96 +58,11 @@ sequenceDiagram
     Gateway->>User: Play Audio (Queue)
 ```
 
-### Core Components
-*   **Orchestration Layer:** A custom `VoiceOrchestrator` in **NestJS** managing the conversation state machine (Listening -> Processing -> Speaking).
-*   **Streaming Pipelines:** Utilizes **RxJS** and native **Node.js streams** to pipe audio data with minimal memory footprint.
-*   **Interruption Handling (Barge-in):** sophisticated logic to instantly clear audio buffers and cancel LLM generation when the user speaks over the AI.
-*   **Containerization:** Fully Dockerized environment using **Docker Compose** for consistent and seamless deployment.
-
 ---
 
-## 🛠️ Tech Stack
+## 📚 Documentation & Setup
 
-### Backend (`/api`)
-*   **Framework:** [NestJS](https://nestjs.com/) (Node.js)
-*   **Communication:** WebSockets (`ws` adapter), Event Emitters
-*   **AI Providers:**
-    *   **STT (Hearing):** Deepgram Nova-2 (WebSocket Stream)
-    *   **LLM (Brain):** Groq (Llama 3 70B - Token Streaming)
-    *   **TTS (Speaking):** Deepgram Aura (Low Latency)
-*   **DevOps:** Docker, Colima, Docker Compose
+To learn how to run the project, please refer to the documentation in the respective directories:
 
-### Frontend (`/web`)
-*   **Framework:** React / Flutter (Web)
-*   **Audio Processing:** Raw PCM 16-bit audio capture and playback (Worklet-based)
-*   **State Management:** Real-time socket state synchronization
-
----
-
-## 📂 Repository Structure
-
-```bash
-nexus-voice-poc/
-├── api/                 # NestJS Application (Backend)
-│   ├── src/
-│   │   ├── modules/
-│   │   │   ├── gateway/       # WebSocket & Stream handling
-│   │   │   ├── orchestrator/  # Conversation State Machine
-│   │   │   └── ai-services/   # Adapters for Groq/Deepgram
-│   └── Dockerfile
-├── web/                 # Frontend Application
-├── docker-compose.yml   # Infrastructure orchestration
-└── README.md
-```
-
----
-
-## ⚡ Getting Started
-
-### Prerequisites
-*   Node.js v20+
-*   Docker & Docker Compose (or Colima)
-*   API Keys for **Deepgram** & **Groq**
-
-### Installation
-
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/your-username/nexus-voice-poc.git
-    cd nexus-voice-poc
-    ```
-
-2.  **Environment Setup**
-    Create a `.env` file in the `/api` directory:
-    ```env
-    DEEPGRAM_API_KEY=your_key_here
-    GROQ_API_KEY=your_key_here
-    PORT=3000
-    ```
-
-3.  **Run with Docker**
-    ```bash
-    docker-compose up --build
-    ```
-
-4.  **Access**
-    *   **API/Gateway:** `http://localhost:3000`
-    *   **Web Client:** `http://localhost:5173` (or configured port)
-
----
-
-## 🔮 Roadmap
-
-- [x] **POC:** Audio Streaming & LLM Integration.
-- [ ] **Latency Optimization:** Implement jitter buffer strategies.
-- [ ] **Observability:** Add OpenTelemetry/Jaeger to trace latency spikes.
-- [ ] **Scalability:** Migrate Gateway to Redis IoAdapter for horizontal scaling.
-
----
-
-## Author
-
-**[Seu Nome]**
-*Full Cycle Software Engineer | Node.js Specialist*
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](LINKEDIN_URL) [![Portfolio](https://img.shields.io/badge/Portfolio-000000?style=for-the-badge&logo=About.me&logoColor=white)](PORTFOLIO_URL)
+*   **Backend / API**: Access the `api` folder and check `api/docs/installation_and_implementation.md` for installation, environment setup, and architecture details.
+*   **Frontend / Web**: Access the `web` folder and check `web/docs/installation_and_implementation.md` for running the React client.
