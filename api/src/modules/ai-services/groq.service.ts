@@ -12,13 +12,16 @@ export class GroqService {
     });
   }
 
-  async generateStream(prompt: string): Promise<AsyncIterable<any>> {
+  async generateStream(prompt: string, systemPrompt?: string): Promise<AsyncIterable<any>> {
+    const systemContent = systemPrompt 
+        ? systemPrompt 
+        : 'Você é um assistente direto e objetivo. Responda sempre em Português do Brasil com respostas extremamente curtas e secas. Sem introduções ou conclusões.';
+
     return this.groq.chat.completions.create({
       messages: [
         {
           role: 'system',
-          content:
-            'Você é um assistente direto e objetivo. Responda sempre em Português do Brasil com respostas extremamente curtas e secas. Sem introduções ou conclusões.',
+          content: systemContent,
         },
         {
           role: 'user',
