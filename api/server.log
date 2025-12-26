@@ -2,17 +2,74 @@
 > nexus-voice-api@0.0.1 start
 > nest start
 
-[32m[Nest] 8659  - [39m26/12/2025, 10:13:55 [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
-[32m[Nest] 8659  - [39m26/12/2025, 10:13:55 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +5ms[39m
-[32m[Nest] 8659  - [39m26/12/2025, 10:13:55 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConversationModule dependencies initialized[39m[38;5;3m +0ms[39m
-[32m[Nest] 8659  - [39m26/12/2025, 10:13:55 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +0ms[39m
-[32m[Nest] 8659  - [39m26/12/2025, 10:13:55 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
-[32m[Nest] 8659  - [39m26/12/2025, 10:13:55 [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mConversationGateway subscribed to the "ping" message[39m[38;5;3m +12ms[39m
-[32m[Nest] 8659  - [39m26/12/2025, 10:13:55 [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +1ms[39m
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +5ms[39m
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAiServicesModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConversationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mConversationGateway subscribed to the "ping" message[39m[38;5;3m +12ms[39m
+DeepgramService initialized
+[32m[Nest] 38404  - [39m26/12/2025, 11:34:58 [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +1ms[39m
 Application is running on: http://[::1]:3000
 Client connected
-Received ping: hello
 Client disconnected
 Client connected
-Received ping: hello
+Deepgram Live Connection Open
+Deepgram Live Connection Open
 Client disconnected
+Client connected
+Deepgram Live Connection Open
+Client disconnected
+Client connected
+Deepgram Live Connection Open
+Client disconnected
+Client connected
+Deepgram Live Connection Open
+Client disconnected
+Client connected
+Client disconnected
+Client connected
+Deepgram Live Connection Open
+Deepgram Live Connection Open
+Transcript: Alô
+Transcript: Alô testes.
+Transcript: Alô testes.
+Speech Final detected
+Speech Final detected
+Speech Final detected
+Speech Final detected
+Transcript: 2 3
+Transcript: 2, testando, alô.
+Speech Final detected
+Speech Final detected
+Speech Final detected
+Speech Final detected
+Speech Final detected
+Speech Final detected
+Speech Final detected
+Client disconnected
+Client connected
+Client connected
+Client disconnected
+Speech Final detected
+Deepgram Live Connection Open
+Deepgram Live Connection Open
+/Users/misael/Documents/misa/nexus-voice-poc/api/src/modules/conversation/conversation.gateway.ts:54
+            if (this.deepgramLive.getReadyState() === 1) { // OPEN
+                                  ^
+
+
+TypeError: Cannot read properties of null (reading 'getReadyState')
+    at WebSocket.<anonymous> (/Users/misael/Documents/misa/nexus-voice-poc/api/src/modules/conversation/conversation.gateway.ts:54:35)
+    at WebSocket.emit (node:events:530:35)
+    at Receiver.receiverOnMessage (/Users/misael/Documents/misa/nexus-voice-poc/api/node_modules/@nestjs/platform-ws/node_modules/ws/lib/websocket.js:1220:20)
+    at Receiver.emit (node:events:518:28)
+    at Receiver.dataMessage (/Users/misael/Documents/misa/nexus-voice-poc/api/node_modules/@nestjs/platform-ws/node_modules/ws/lib/receiver.js:569:14)
+    at Receiver.getData (/Users/misael/Documents/misa/nexus-voice-poc/api/node_modules/@nestjs/platform-ws/node_modules/ws/lib/receiver.js:496:10)
+    at Receiver.startLoop (/Users/misael/Documents/misa/nexus-voice-poc/api/node_modules/@nestjs/platform-ws/node_modules/ws/lib/receiver.js:167:16)
+    at Receiver._write (/Users/misael/Documents/misa/nexus-voice-poc/api/node_modules/@nestjs/platform-ws/node_modules/ws/lib/receiver.js:94:10)
+    at writeOrBuffer (node:internal/streams/writable:572:12)
+    at _write (node:internal/streams/writable:501:10)
+
+Node.js v22.17.0
