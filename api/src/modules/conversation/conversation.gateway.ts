@@ -11,6 +11,7 @@ import { Server, WebSocket } from 'ws';
 import { DeepgramService } from '../ai-services/deepgram.service';
 import { GroqService } from '../ai-services/groq.service';
 import { OpenAiService } from '../ai-services/openai.service';
+import { VOICE_BEHAVIOR_PROMPT } from './prompts';
 
 @WebSocketGateway({
   transports: ['websocket'],
@@ -133,7 +134,13 @@ export class ConversationGateway
      // Trigger LLM and TTS
      try {
         const config = this.clientConfigs.get(client);
-        const stream = await this.groqService.generateStream(text, config?.systemInstruction);
+        let systemPrompt = config?.systemInstruction;
+
+        if (systemPrompt) {
+          systemPrompt = VOICE_BEHAVIOR_PROMPT(systemPrompt);
+        }
+
+        const stream = await this.groqService.generateStream(text, systemPrompt);
         let sentenceBuffer = '';
         
         for await (const chunk of stream) {
