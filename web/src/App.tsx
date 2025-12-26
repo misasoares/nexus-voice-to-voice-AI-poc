@@ -1,27 +1,55 @@
 import { useState, useRef, useEffect } from 'react';
 import './App.css';
 
-interface Message {
-  role: 'user' | 'ai';
-  content: string;
-}
+
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [userTranscripts, setUserTranscripts] = useState<string[]>([]);
   const [aiResponse, setAiResponse] = useState<string>('');
+  const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('alloy');
   
   // We keep track of the current AI response accumulation
   const socketRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioQueueRef = useRef<Blob[]>([]);
+  const isPlayingRef = useRef(false);
+
+  const playNextAudio = async () => {
+    if (audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      return;
+    }
+
+    isPlayingRef.current = true;
+    const nextBlob = audioQueueRef.current.shift();
+    if (nextBlob) {
+      const audioUrl = URL.createObjectURL(nextBlob);
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        playNextAudio();
+      };
+      
+      try {
+        await audio.play();
+      } catch (err) {
+        console.error("Error playing audio chunk:", err);
+        playNextAudio(); // Try next one
+      }
+    }
+  };
 
   useEffect(() => {
     // Connect to WebSocket using the same hostname as the page, but on backend port 3000
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:3000`;
+    // Append voice config
+    const wsUrl = `${protocol}//${window.location.hostname}:3000?ttsProvider=openai&voice=${selectedVoice}`;
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
+    ws.binaryType = 'arraybuffer'; // IMPORTANT for receiving audio
 
     ws.onopen = () => {
       console.log('Connected to WebSocket');
@@ -34,16 +62,23 @@ function App() {
     };
 
     ws.onmessage = (event) => {
+      // Check if binary data (Audio Chunk)
+      if (event.data instanceof ArrayBuffer) {
+        // It's audio!
+        const blob = new Blob([event.data], { type: 'audio/mp3' });
+        audioQueueRef.current.push(blob);
+        if (!isPlayingRef.current) {
+            playNextAudio();
+        }
+        return;
+      }
+
       try {
         const data = JSON.parse(event.data);
         
         if (data.event === 'transcript') {
-           // We just append to the list of user transcripts for now. 
-           // In a real chat app, you'd want to handle "final" vs "interim" updates more vaguely, 
-           // but appending works for a simple log.
            setUserTranscripts(prev => [...prev, data.data]);
         } else if (data.event === 'llm_token') {
-           // Append token to the current AI response
            setAiResponse(prev => prev + data.data);
         }
       } catch (e) {
@@ -54,16 +89,9 @@ function App() {
     return () => {
       ws.close();
     };
-  }, []);
+  }, [selectedVoice]); // Reconnect when voice changes
 
   const startRecording = async () => {
-    // Clear previous session data separately if desired, 
-    // but for now we keep appending or clearing manually.
-    setAiResponse(''); // Clear AI response for new recording? Or keep history? 
-    // Let's clear AI response when starting a new turn helps visibility, 
-    // but the user might want valid history. 
-    // For this simple POC, let's just append or keep as is.
-    // Actually, let's clear AI response on START so we see the new one clearly.
     setAiResponse(''); 
     setUserTranscripts([]);
 
@@ -94,87 +122,107 @@ function App() {
   };
 
   return (
-    <div style={{ 
-      padding: '20px', 
-      fontFamily: 'sans-serif', 
-      height: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column' 
-    }}>
-      <h1>Nexus Voice - Feature 3 Verify</h1>
-      
-      <div style={{ marginBottom: '20px' }}>
-        Status: <span style={{ color: isConnected ? 'green' : 'red' }}>
-          {isConnected ? 'Connected' : 'Disconnected'}
-        </span>
-        <button 
-          onClick={isRecording ? stopRecording : startRecording} 
-          disabled={!isConnected}
-          style={{ 
-            marginLeft: '20px',
-            padding: '10px 20px', 
-            fontSize: '16px', 
-            cursor: 'pointer',
-            backgroundColor: isRecording ? 'red' : 'green',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px'
-          }}
-        >
-          {isRecording ? 'STOP RECORDING' : 'START RECORDING'}
-        </button>
-      </div>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
+      <header style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ margin: 0 }}>Nexus Voice POC</h1>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label>
+            Voice: 
+            <select 
+              value={selectedVoice} 
+              onChange={(e) => setSelectedVoice(e.target.value as any)}
+              style={{ marginLeft: '10px', padding: '5px' }}
+            >
+              <option value="alloy">Alloy (OpenAI)</option>
+              <option value="shimmer">Shimmer (OpenAI)</option>
+            </select>
+          </label>
+          <div style={{ 
+            width: '12px', 
+            height: '12px', 
+            borderRadius: '50%', 
+            backgroundColor: isConnected ? '#4caf50' : '#f44336' 
+          }} />
+          <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+        </div>
+      </header>
 
       <div style={{ 
+        padding: '20px', 
         display: 'flex', 
-        flex: 1, 
-        gap: '20px',
-        minHeight: 0 // necessary for flex scroll
+        flexDirection: 'column', 
+        flex: 1 
       }}>
-        {/* Left Column: User Transcripts */}
-        <div style={{ 
-          flex: 1, 
-          border: '1px solid #ccc', 
-          borderRadius: '8px', 
-          padding: '15px', 
-          backgroundColor: '#f9f9f9',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <h2 style={{ marginTop: 0 }}>User (Microphone)</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {userTranscripts.length === 0 && <p style={{ color: '#999' }}>Speak into the mic...</p>}
-            {userTranscripts.map((text, index) => (
-              <div key={index} style={{ 
-                padding: '10px', 
-                backgroundColor: '#e3f2fd', 
-                borderRadius: '8px',
-                alignSelf: 'flex-start'
-              }}>
-                {text}
-              </div>
-            ))}
-          </div>
+        
+        <div style={{ marginBottom: '20px' }}>
+          <button 
+            onClick={isRecording ? stopRecording : startRecording} 
+            disabled={!isConnected}
+            style={{ 
+              padding: '10px 20px', 
+              fontSize: '16px', 
+              cursor: 'pointer',
+              backgroundColor: isRecording ? 'red' : 'green',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px'
+            }}
+          >
+            {isRecording ? 'STOP RECORDING' : 'START RECORDING'}
+          </button>
         </div>
 
-        {/* Right Column: AI Response */}
         <div style={{ 
+          display: 'flex', 
           flex: 1, 
-          border: '1px solid #ccc', 
-          borderRadius: '8px', 
-          padding: '15px', 
-          backgroundColor: '#f0f4c3',
-          overflowY: 'auto'
+          gap: '20px',
+          minHeight: 0 // necessary for flex scroll
         }}>
-          <h2 style={{ marginTop: 0 }}>Nexus AI</h2>
-          {aiResponse ? (
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
-              {aiResponse}
+          {/* Left Column: User Transcripts */}
+          <div style={{ 
+            flex: 1, 
+            border: '1px solid #ccc', 
+            borderRadius: '8px', 
+            padding: '15px', 
+            backgroundColor: '#f9f9f9',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <h2 style={{ marginTop: 0 }}>User (Microphone)</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {userTranscripts.length === 0 && <p style={{ color: '#999' }}>Speak into the mic...</p>}
+              {userTranscripts.map((text, index) => (
+                <div key={index} style={{ 
+                  padding: '10px', 
+                  backgroundColor: '#e3f2fd', 
+                  borderRadius: '8px',
+                  alignSelf: 'flex-start'
+                }}>
+                  {text}
+                </div>
+              ))}
             </div>
-          ) : (
-             <p style={{ color: '#999' }}>AI response will appear here...</p>
-          )}
+          </div>
+
+          {/* Right Column: AI Response */}
+          <div style={{ 
+            flex: 1, 
+            border: '1px solid #ccc', 
+            borderRadius: '8px', 
+            padding: '15px', 
+            backgroundColor: '#f0f4c3',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ marginTop: 0 }}>Nexus AI</h2>
+            {aiResponse ? (
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                {aiResponse}
+              </div>
+            ) : (
+               <p style={{ color: '#999' }}>AI response will appear here...</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
