@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, WebSocket } from 'ws';
 import { DeepgramService } from '../ai-services/deepgram.service';
+import { GroqService } from '../ai-services/groq.service';
 
 @WebSocketGateway({
   transports: ['websocket'],
@@ -23,7 +24,10 @@ export class ConversationGateway
   server: Server;
   private sessions = new Map<WebSocket, any>();
 
-  constructor(private readonly deepgramService: DeepgramService) {}
+  constructor(
+    private readonly deepgramService: DeepgramService,
+    private readonly groqService: GroqService
+  ) {}
 
   handleConnection(client: WebSocket) {
     console.log('Client connected');
@@ -34,16 +38,35 @@ export class ConversationGateway
       console.log('Deepgram Live Connection Open');
     });
 
-    deepgramLive.on('Results', (data) => {
+    deepgramLive.on('Results', async (data) => {
       const transcript = data.channel.alternatives[0].transcript;
-      if (transcript) {
-        console.log('Transcript:', transcript);
+      if (transcript && data.is_final) {
+        console.log('Speech Final detected. Transcript:', transcript);
         if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ event: 'transcript', data: transcript }));
+             client.send(JSON.stringify({ event: 'transcript', data: transcript }));
         }
-      }
-      if (data.is_final) {
-          console.log('Speech Final detected');
+        
+        // Trigger LLM
+        try {
+          const stream = await this.groqService.generateStream(transcript);
+          for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              process.stdout.write(content); // Log to terminal
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ event: 'llm_token', data: content }));
+              }
+            }
+          }
+          console.log('\nLLM Stream finished');
+        } catch (error) {
+          console.error('Groq Error:', error);
+        }
+      } else if (transcript) {
+         // Interim results
+         if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ event: 'transcript', data: transcript }));
+         }
       }
     });
 

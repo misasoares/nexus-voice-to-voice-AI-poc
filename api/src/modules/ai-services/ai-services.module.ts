@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { DeepgramService } from './deepgram.service';
+import { GroqService } from './groq.service';
 
 @Module({
-  providers: [DeepgramService],
-  exports: [DeepgramService],
+  imports: [ConfigModule],
+  providers: [DeepgramService, GroqService],
+  exports: [DeepgramService, GroqService],
 })
 export class AiServicesModule {}
