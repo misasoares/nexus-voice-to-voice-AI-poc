@@ -60,6 +60,8 @@ export class ConversationGateway
 
   // Transcript Buffer: Accumulates speech until silence (UtteranceEnd)
   private clientTranscriptBuffers = new Map<WebSocket, string>();
+  // Interim Buffer: Tracks the latest non-final transcript (for manual trigger race conditions)
+  private clientInterimBuffers = new Map<WebSocket, string>();
 
   constructor(
     private readonly deepgramService: DeepgramService,
@@ -95,6 +97,7 @@ export class ConversationGateway
     
     this.responseQueues.set(client, Promise.resolve()); // Initialize queue
     this.clientTranscriptBuffers.set(client, ''); // Initialize buffer
+    this.clientInterimBuffers.set(client, ''); // Initialize interim
 
     console.log(`Client Config: Provider=${ttsProvider}, Voice=${voice}`);
 
@@ -116,17 +119,25 @@ export class ConversationGateway
         // Append to buffer instead of processing immediately
         const currentBuffer = this.clientTranscriptBuffers.get(client) || '';
         this.clientTranscriptBuffers.set(client, currentBuffer + ' ' + transcript);
+        
+        // Clear interim (it's now final)
+        this.clientInterimBuffers.set(client, '');
 
       } else if (transcript) {
          // Interim results
          if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({ event: 'transcript', data: transcript }));
          }
+         // Track interim for manual trigger
+         this.clientInterimBuffers.set(client, transcript);
       }
     });
 
     deepgramLive.on('UtteranceEnd', async () => {
-        console.log('UtteranceEnd detected (Silence). Processing buffer...');
+        console.log('UtteranceEnd detected (Silence). Ignored for Manual Mode.');
+        // Manual Mode: We do NOT process buffer on VAD silence anymore.
+        // The user must explicitly mute to trigger response.
+        /*
         const buffer = this.clientTranscriptBuffers.get(client)?.trim();
         
         if (buffer && buffer.length > 0) {
@@ -140,6 +151,7 @@ export class ConversationGateway
             }
             await this.processTextResponse(client, buffer);
         }
+        */
     });
 
     deepgramLive.on('error', (err) => {
@@ -158,14 +170,21 @@ export class ConversationGateway
                 }
                 if (message.event === 'speech_end') {
                     console.log('Received Manual Speech End.');
-                    const buffer = this.clientTranscriptBuffers.get(client)?.trim();
-                    if (buffer && buffer.length > 0) {
-                        console.log('Processing full user text (Manual Trigger):', buffer);
+                    const finalBuffer = this.clientTranscriptBuffers.get(client)?.trim() || '';
+                    const interimBuffer = this.clientInterimBuffers.get(client)?.trim() || '';
+                    
+                    // Combine Final + Interim (Interim is usually the last part being spoken that hasn't finalized yet)
+                    const fullText = (finalBuffer + ' ' + interimBuffer).trim();
+
+                    if (fullText.length > 0) {
+                        console.log('Processing full user text (Manual Trigger):', fullText);
                         this.clientTranscriptBuffers.set(client, '');
+                        this.clientInterimBuffers.set(client, '');
+                        
                         if (client.readyState === WebSocket.OPEN) {
                              client.send(JSON.stringify({ event: 'processing_start' }));
                         }
-                        await this.processTextResponse(client, buffer);
+                        await this.processTextResponse(client, fullText);
                     }
                     return;
                 }
@@ -204,6 +223,7 @@ export class ConversationGateway
     this.clientConfigs.delete(client);
     this.responseQueues.delete(client);
     this.clientTranscriptBuffers.delete(client);
+    this.clientInterimBuffers.delete(client);
   }
 
   @SubscribeMessage('ping')
@@ -264,7 +284,7 @@ export class ConversationGateway
         
         // Handle any remaining text in buffer
         if (sentenceBuffer.trim().length > 0) {
-           console.log(`\nQueuing Audio Generation for remaining: "${sentenceBuffer}"`);
+           console.log(`\nQueuing Final: "${sentenceBuffer}"`);
            this.queueAudioGeneration(client, sentenceBuffer);
         }
         
