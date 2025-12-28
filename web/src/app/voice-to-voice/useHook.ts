@@ -200,8 +200,12 @@ export const useVoiceToVoice = () => {
       isMutedRef.current = newMutedState;
 
       if (newMutedState && socketRef.current?.readyState === WebSocket.OPEN) {
-          // User muted -> Signal end of speech
+          // User muted (Stopped speaking) -> Signal end of speech to triggers AI
           socketRef.current.send(JSON.stringify({ event: 'speech_end' }));
+      } else if (!newMutedState) {
+          // User unmuted (Started speaking) -> Interrupt AI immediately
+          console.log("User unmuted: Interrupting AI");
+          stopAudio();
       }
   }
 
