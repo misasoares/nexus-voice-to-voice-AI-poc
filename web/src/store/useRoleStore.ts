@@ -3,13 +3,15 @@ import { persist } from 'zustand/middleware';
 
 export interface Role {
   id: string;
+  name: string;
   content: string;
+  createdAt: number;
 }
 
 interface RoleState {
   roles: Role[];
   activeRoleId: string | null;
-  addRole: (content: string) => void;
+  addRole: (content: string, name?: string) => void;
   removeRole: (id: string) => void;
   setActiveRole: (id: string | null) => void;
   getActiveRole: () => Role | undefined;
@@ -20,12 +22,14 @@ export const useRoleStore = create<RoleState>()(
     (set, get) => ({
       roles: [],
       activeRoleId: null,
-      addRole: (content) => {
+      addRole: (content, name) => {
         const newRole: Role = {
           id: crypto.randomUUID(), // Ensure distinct IDs
+          name: name || `Lead Profile ${new Date().toLocaleString()}`,
           content,
+          createdAt: Date.now(),
         };
-        set((state) => ({ roles: [...state.roles, newRole] }));
+        set((state) => ({ roles: [newRole, ...state.roles] }));
       },
       removeRole: (id) =>
         set((state) => ({

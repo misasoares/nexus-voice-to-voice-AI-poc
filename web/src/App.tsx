@@ -3,6 +3,7 @@ import HomePage from './app/home/page';
 import VoiceToVoicePage from './app/voice-to-voice/page';
 import TextToVoicePage from './app/text-to-voice/page';
 import AiRolesPage from './app/ai-roles/page';
+import CreateProfilePage from './app/ai-roles/create/page';
 import './App.css';
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
         <Route path="/voice-to-voice" element={<VoiceToVoicePage />} />
         <Route path="/text-to-voice" element={<TextToVoicePage />} />
         <Route path="/ai-roles" element={<AiRolesPage />} />
+        <Route path="/ai-roles/create" element={<CreateProfilePage />} />
       </Routes>
     </Router>
   );
