@@ -43,3 +43,28 @@ If you need to change this, check `src/App.tsx` or `vite.config.ts`.
 ### Troubleshooting
 *   **Connection Refused**: Ensure the backend is running and that port 3000 is accessible.
 *   **Microphone Permission**: Allow microphone access in your browser when prompted.
+
+## 🧠 AI Architecture & Prompt Engineering
+
+### Two-Prompt System
+We split the "Persona" responsibility into two distinct stages to optimize for different goals:
+
+1.  **Generation Phase (`SYSTEM_PROMPT_GENERATOR`)**:
+    *   **Location**: `api/.env`
+    *   **Purpose**: Creates the static "Character Sheet" (Lead Profile).
+    *   **Trigger**: Button "Auto Generate" or Manual Creation.
+    *   **Output**: A static JSON/Object containing Name, Bio, Pain Points, Objections.
+    *   **Status**: *Static / Setup-only.*
+
+2.  **Runtime Phase (`VOICE_BEHAVIOR_PROMPT`)**:
+    *   **Location**: `api/src/modules/conversation/prompts.ts`
+    *   **Purpose**: Controls the *Acting* and *Voice* during the call.
+    *   **Trigger**: Every user message in the WebSocket.
+    *   **Mechanism**: Wraps the Static Lead Profile with dynamic acting instructions.
+    *   **Optimization**: Strictly engineered for TTS (Text-to-Speech) quality.
+        *   Forces lowercasing (better prosody).
+        *   Injects hesitation ("...").
+        *   Uses fillers ("humm", "olha") to buy time.
+
+---
+
