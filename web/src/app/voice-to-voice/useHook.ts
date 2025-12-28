@@ -7,6 +7,21 @@ export const useVoiceToVoice = () => {
   const [userTranscripts, setUserTranscripts] = useState<string[]>([]);
   const [aiResponse, setAiResponse] = useState<string>('');
   const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('alloy');
+  const [costData, setCostData] = useState<{
+      groq: { tokens: number; cost: string };
+      openai: { characters: number; cost: string };
+      deepgram: { seconds: number; cost: string };
+      total_cost: string;
+  } | null>(null);
+  const [duration, setDuration] = useState(0); // in seconds
+  
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // New state for "Thinking"
+  
+  // Refs for callbacks
+  const isProcessingRef = useRef(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(false);
   
   // We keep track of the current AI response accumulation
   const socketRef = useRef<WebSocket | null>(null);
@@ -17,10 +32,14 @@ export const useVoiceToVoice = () => {
   const playNextAudio = async () => {
     if (audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
+      setIsAiSpeaking(false);
+      setIsProcessing(false); // Playback finished, allow listening again
+      isProcessingRef.current = false;
       return;
     }
 
     isPlayingRef.current = true;
+    setIsAiSpeaking(true); // Playback started
     const nextBlob = audioQueueRef.current.shift();
     if (nextBlob) {
       const audioUrl = URL.createObjectURL(nextBlob);
@@ -80,6 +99,11 @@ export const useVoiceToVoice = () => {
            setUserTranscripts(prev => [...prev, data.data]);
         } else if (data.event === 'llm_token') {
            setAiResponse(prev => prev + data.data);
+        } else if (data.event === 'cost_update') {
+           setCostData(data.data);
+        } else if (data.event === 'processing_start') {
+           setIsProcessing(true); // AI is thinking, stop listening/sending audio
+           isProcessingRef.current = true;
         }
       } catch (e) {
         console.error('Error parsing message', e);
@@ -91,9 +115,22 @@ export const useVoiceToVoice = () => {
     };
   }, [selectedVoice]); // Reconnect when voice changes
 
+  useEffect(() => {
+    let interval: any;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording]);
+
   const startRecording = async () => {
     setAiResponse(''); 
     setUserTranscripts([]);
+    setDuration(0);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -101,7 +138,8 @@ export const useVoiceToVoice = () => {
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
+        // Send audio unless manually muted
+        if (!isMutedRef.current && event.data.size > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
           socketRef.current.send(event.data);
         }
       };
@@ -118,8 +156,21 @@ export const useVoiceToVoice = () => {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
+      setIsMuted(false);
+      isMutedRef.current = false;
     }
   };
+
+  const toggleMute = () => {
+      const newMutedState = !isMuted;
+      setIsMuted(newMutedState);
+      isMutedRef.current = newMutedState;
+
+      if (newMutedState && socketRef.current?.readyState === WebSocket.OPEN) {
+          // User muted -> Signal end of speech
+          socketRef.current.send(JSON.stringify({ event: 'speech_end' }));
+      }
+  }
 
   return {
     isConnected,
@@ -128,7 +179,13 @@ export const useVoiceToVoice = () => {
     aiResponse,
     selectedVoice,
     setSelectedVoice,
+    costData,
+    duration,
     startRecording,
-    stopRecording
+    stopRecording,
+    isAiSpeaking,
+    isProcessing,
+    isMuted,
+    toggleMute
   };
 };
