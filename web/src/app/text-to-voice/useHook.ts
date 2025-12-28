@@ -6,7 +6,7 @@ export const useTextToVoice = () => {
   // Chat history: { sender: 'user' | 'ai', text: string }
   const [chatHistory, setChatHistory] = useState<{ sender: 'user' | 'ai', text: string }[]>([]);
   const [aiResponseBuffer, setAiResponseBuffer] = useState<string>('');
-  const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('alloy');
+  const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('shimmer');
   const [costData, setCostData] = useState<{
     groq: { tokens: number; cost: string };
     openai: { characters: number; cost: string };

@@ -6,7 +6,7 @@ export const useVoiceToVoice = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [userTranscripts, setUserTranscripts] = useState<string[]>([]);
   const [aiResponse, setAiResponse] = useState<string>('');
-  const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('alloy');
+  const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('shimmer');
   const [costData, setCostData] = useState<{
       groq: { tokens: number; cost: string };
       openai: { characters: number; cost: string };
