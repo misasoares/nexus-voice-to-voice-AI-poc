@@ -75,7 +75,7 @@ export class ConversationGateway
     const url = new URL(urlString, 'http://localhost');
     
     const ttsProvider = (url.searchParams.get('ttsProvider') as 'openai' | 'deepgram') || 'openai';
-    const voice = url.searchParams.get('voice') || 'alloy';
+    const voice = url.searchParams.get('voice') || 'shimmer';
     const systemInstruction = url.searchParams.get('systemInstruction') || undefined;
 
     this.clientConfigs.set(client, { ttsProvider, voice, systemInstruction });

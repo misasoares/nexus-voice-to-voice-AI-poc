@@ -16,7 +16,7 @@ export class OpenAiService {
     });
   }
 
-  async generateAudio(text: string, voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'alloy'): Promise<Buffer> {
+  async generateAudio(text: string, voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'shimmer'): Promise<Buffer> {
     try {
       const response = await this.openai.audio.speech.create({
         model: 'tts-1',
