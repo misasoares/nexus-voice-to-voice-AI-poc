@@ -8,7 +8,8 @@ const TextToVoicePage = () => {
     aiResponseBuffer,
     selectedVoice,
     setSelectedVoice,
-    sendMessage
+    sendMessage,
+    costData
   } = useTextToVoice();
 
   const [inputText, setInputText] = useState('');
@@ -140,6 +141,29 @@ const TextToVoicePage = () => {
               Send
           </button>
         </div>
+
+        {/* Cost Estimation */}
+        {costData && (
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            border: '1px solid #e0e0e0',
+            borderRadius: '8px',
+            backgroundColor: '#f5f5f5',
+            fontSize: '14px',
+            color: '#333'
+          }}>
+            <p style={{ margin: '5px 0' }}>
+              <strong>groq:</strong> {costData.groq.tokens} tokens utilizados no groq, estimativa de R${costData.groq.cost.replace('.', ',')}
+            </p>
+            <p style={{ margin: '5px 0' }}>
+              <strong>open ai:</strong> {costData.openai.characters} tokens utilizados no open ai, estimativa de R${costData.openai.cost.replace('.', ',')}
+            </p>
+            <p style={{ margin: '5px 0', borderTop: '1px solid #ccc', paddingTop: '5px', fontWeight: 'bold' }}>
+              estimativa de valor total: R${costData.total_cost.replace('.', ',')} (custo do groq + custo da open ai)
+            </p>
+          </div>
+        )}
 
       </div>
     </div>

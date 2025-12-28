@@ -7,6 +7,11 @@ export const useTextToVoice = () => {
   const [chatHistory, setChatHistory] = useState<{ sender: 'user' | 'ai', text: string }[]>([]);
   const [aiResponseBuffer, setAiResponseBuffer] = useState<string>('');
   const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('alloy');
+  const [costData, setCostData] = useState<{
+    groq: { tokens: number; cost: string };
+    openai: { characters: number; cost: string };
+    total_cost: string;
+  } | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const audioQueueRef = useRef<Blob[]>([]);
@@ -78,6 +83,8 @@ export const useTextToVoice = () => {
                const newBuffer = prev + data.data;
                return newBuffer;
            });
+        } else if (data.event === 'cost_update') {
+           setCostData(data.data);
         } 
         // Note: The server might send 'transcript' event if it processes audio, 
         // but here we send text. We rely on llm_token for the AI response text.
@@ -130,6 +137,7 @@ export const useTextToVoice = () => {
     aiResponseBuffer,
     selectedVoice,
     setSelectedVoice,
+    costData,
     sendMessage
   };
 };
