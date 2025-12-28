@@ -28,8 +28,19 @@ export const useVoiceToVoice = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioQueueRef = useRef<Blob[]>([]);
   const isPlayingRef = useRef(false);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null); // Track likely playing audio for barge-in
 
-  const playNextAudio = async () => {
+  // Helper to stop current audio playback immediately (Barge-in)
+  const stopAudio = () => {
+    if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current = null;
+    }
+    isPlayingRef.current = false;
+    audioQueueRef.current = []; // Clear queue
+    setIsAiSpeaking(false);
+  };  const playNextAudio = async () => {
     if (audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
       setIsAiSpeaking(false);
@@ -45,8 +56,11 @@ export const useVoiceToVoice = () => {
       const audioUrl = URL.createObjectURL(nextBlob);
       const audio = new Audio(audioUrl);
       
+        currentAudioRef.current = audio;
+
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
+        currentAudioRef.current = null;
         playNextAudio();
       };
       
@@ -54,6 +68,7 @@ export const useVoiceToVoice = () => {
         await audio.play();
       } catch (err) {
         console.error("Error playing audio chunk:", err);
+        currentAudioRef.current = null;
         playNextAudio(); // Try next one
       }
     }
@@ -96,6 +111,11 @@ export const useVoiceToVoice = () => {
         const data = JSON.parse(event.data);
         
         if (data.event === 'transcript') {
+           // BARGE-IN: If user speaks, stop AI immediately
+           if (isAiSpeaking || audioQueueRef.current.length > 0) {
+               console.log("Barge-in triggered: Stopping AI audio");
+               stopAudio();
+           }
            setUserTranscripts(prev => [...prev, data.data]);
         } else if (data.event === 'llm_token') {
            setAiResponse(prev => prev + data.data);
@@ -112,6 +132,7 @@ export const useVoiceToVoice = () => {
 
     return () => {
       ws.close();
+      stopAudio(); // Cleanup audio on unmount/reconnect
     };
   }, [selectedVoice]); // Reconnect when voice changes
 
@@ -153,13 +174,25 @@ export const useVoiceToVoice = () => {
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
+      if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+      }
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      setIsMuted(false);
-      isMutedRef.current = false;
+      mediaRecorderRef.current = null; 
     }
+    
+    setIsRecording(false);
+    setIsMuted(false);
+    isMutedRef.current = false;
+    stopAudio(); // Stop any pending AI audio
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+      return () => {
+          stopRecording();
+      };
+  }, []);
 
   const toggleMute = () => {
       const newMutedState = !isMuted;
