@@ -8,6 +8,7 @@ async function bootstrap() {
   
   // Use WsAdapter for 'ws' library
   app.useWebSocketAdapter(new WsAdapter(app));
+  app.enableCors();
   
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;

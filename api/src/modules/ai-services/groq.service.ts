@@ -32,4 +32,18 @@ export class GroqService {
       stream: true,
     });
   }
+
+  async generateCompletion(prompt: string): Promise<string> {
+    const response = await this.groq.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      model: 'llama-3.3-70b-versatile',
+    });
+
+    return response.choices[0]?.message?.content || '';
+  }
 }
