@@ -20,7 +20,7 @@ export class DeepgramService implements OnModuleInit {
 
   createLiveConnection(): LiveClient {
     return this.deepgram.listen.live({
-      model: 'nova-2',
+      model: 'nova-3',
       language: 'pt-BR',
       smart_format: true,
       // Let Deepgram detect or assume wav/default
