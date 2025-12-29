@@ -6,7 +6,15 @@ export const useVoiceToVoice = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [userTranscripts, setUserTranscripts] = useState<string[]>([]);
   const [aiResponse, setAiResponse] = useState<string>('');
+  
+  // TTS Configuration
+  const [ttsProvider, setTtsProvider] = useState<'openai' | 'deepgram' | 'kokoro'>('openai');
   const [selectedVoice, setSelectedVoice] = useState<'alloy' | 'shimmer'>('shimmer');
+  const [kokoroVoice, setKokoroVoice] = useState<string>('bm_lewis');
+  const [kokoroVoiceMix, setKokoroVoiceMix] = useState<string>('af_bella'); // Secondary voice for mixing
+  const [enableMixing, setEnableMixing] = useState(false);
+  const [kokoroSpeed, setKokoroSpeed] = useState<number>(1.0);
+
   const [costData, setCostData] = useState<{
       groq: { tokens: number; cost: string };
       openai: { characters: number; cost: string };
@@ -80,7 +88,21 @@ export const useVoiceToVoice = () => {
     // Append voice config and system prompt
     const activeRole = useRoleStore.getState().getActiveRole();
     const systemInstructionParam = activeRole ? `&systemInstruction=${encodeURIComponent(activeRole.content)}` : '';
-    const wsUrl = `${protocol}//${window.location.hostname}:3000?ttsProvider=openai&voice=${selectedVoice}${systemInstructionParam}`;
+    
+    // Construct Query Params based on provider
+    let queryParams = `?ttsProvider=${ttsProvider}${systemInstructionParam}`;
+    
+    if (ttsProvider === 'openai') {
+        queryParams += `&voice=${selectedVoice}`;
+    } else if (ttsProvider === 'kokoro') {
+        let finalVoice = kokoroVoice;
+        if (enableMixing) {
+            finalVoice = `${kokoroVoice}+${kokoroVoiceMix}`;
+        }
+        queryParams += `&voice=${finalVoice}&speed=${kokoroSpeed}`;
+    }
+    
+    const wsUrl = `${protocol}//${window.location.hostname}:3000${queryParams}`;
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
     ws.binaryType = 'arraybuffer'; // IMPORTANT for receiving audio
@@ -134,7 +156,7 @@ export const useVoiceToVoice = () => {
       ws.close();
       stopAudio(); // Cleanup audio on unmount/reconnect
     };
-  }, [selectedVoice]); // Reconnect when voice changes
+  }, [selectedVoice, ttsProvider, kokoroVoice, kokoroSpeed, enableMixing, kokoroVoiceMix]); // Reconnect when config changes
 
   useEffect(() => {
     let interval: any;
@@ -214,8 +236,21 @@ export const useVoiceToVoice = () => {
     isRecording,
     userTranscripts,
     aiResponse,
+    
+    // Config
+    ttsProvider,
+    setTtsProvider,
     selectedVoice,
     setSelectedVoice,
+    kokoroVoice,
+    setKokoroVoice,
+    kokoroVoiceMix,
+    setKokoroVoiceMix,
+    enableMixing,
+    setEnableMixing,
+    kokoroSpeed,
+    setKokoroSpeed,
+    
     costData,
     duration,
     startRecording,

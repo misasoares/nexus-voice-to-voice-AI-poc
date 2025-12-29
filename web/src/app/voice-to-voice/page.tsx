@@ -8,6 +8,16 @@ const VoiceToVoicePage = () => {
     aiResponse,
     selectedVoice,
     setSelectedVoice,
+    ttsProvider,
+    setTtsProvider,
+    kokoroVoice,
+    setKokoroVoice,
+    kokoroVoiceMix,
+    setKokoroVoiceMix,
+    enableMixing,
+    setEnableMixing,
+    kokoroSpeed,
+    setKokoroSpeed,
     startRecording,
     stopRecording,
     costData,
@@ -30,17 +40,120 @@ const VoiceToVoicePage = () => {
       <header style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ margin: 0 }}>Nexus Voice POC</h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <label>
-            Voice: 
-            <select 
-              value={selectedVoice} 
-              onChange={(e) => setSelectedVoice(e.target.value as any)}
-              style={{ marginLeft: '10px', padding: '5px' }}
-            >
-              <option value="alloy">Alloy (OpenAI)</option>
-              <option value="shimmer">Shimmer (OpenAI)</option>
-            </select>
-          </label>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <label>
+              Provider:
+              <select
+                value={ttsProvider}
+                onChange={(e) => setTtsProvider(e.target.value as any)}
+                style={{ marginLeft: '5px', padding: '5px' }}
+              >
+                <option value="openai">OpenAI</option>
+                <option value="kokoro">Kokoro (Local)</option>
+              </select>
+            </label>
+
+            {ttsProvider === 'openai' && (
+              <label>
+                Voice:
+                <select
+                  value={selectedVoice}
+                  onChange={(e) => setSelectedVoice(e.target.value as any)}
+                  style={{ marginLeft: '5px', padding: '5px' }}
+                >
+                  <option value="alloy">Alloy</option>
+                  <option value="shimmer">Shimmer</option>
+                </select>
+              </label>
+            )}
+
+            {ttsProvider === 'kokoro' && (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <label>
+                        Voice 1:
+                        <select
+                            value={kokoroVoice}
+                            onChange={(e) => setKokoroVoice(e.target.value)}
+                            style={{ marginLeft: '5px', padding: '5px' }}
+                        >
+                            <optgroup label="American Female">
+                                <option value="af_bella">Bella</option>
+                                <option value="af_nicole">Nicole</option>
+                                <option value="af_sarah">Sarah</option>
+                                <option value="af_sky">Sky</option>
+                            </optgroup>
+                            <optgroup label="American Male">
+                                <option value="am_adam">Adam</option>
+                                <option value="am_michael">Michael</option>
+                            </optgroup>
+                            <optgroup label="British Female">
+                                <option value="bf_emma">Emma</option>
+                                <option value="bf_isabella">Isabella</option>
+                            </optgroup>
+                            <optgroup label="British Male">
+                                <option value="bm_george">George</option>
+                                <option value="bm_lewis">Lewis</option>
+                            </optgroup>
+                        </select>
+                        </label>
+                        
+                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '12px' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={enableMixing} 
+                                onChange={(e) => setEnableMixing(e.target.checked)}
+                                style={{ marginRight: '4px' }}
+                            />
+                            Mix
+                        </label>
+                    </div>
+
+                    {enableMixing && (
+                         <label>
+                         Voice 2:
+                         <select
+                             value={kokoroVoiceMix}
+                             onChange={(e) => setKokoroVoiceMix(e.target.value)}
+                             style={{ marginLeft: '5px', padding: '5px' }}
+                         >
+                            <optgroup label="American Female">
+                                <option value="af_bella">Bella</option>
+                                <option value="af_nicole">Nicole</option>
+                                <option value="af_sarah">Sarah</option>
+                                <option value="af_sky">Sky</option>
+                            </optgroup>
+                            <optgroup label="American Male">
+                                <option value="am_adam">Adam</option>
+                                <option value="am_michael">Michael</option>
+                            </optgroup>
+                            <optgroup label="British Female">
+                                <option value="bf_emma">Emma</option>
+                                <option value="bf_isabella">Isabella</option>
+                            </optgroup>
+                            <optgroup label="British Male">
+                                <option value="bm_george">George</option>
+                                <option value="bm_lewis">Lewis</option>
+                            </optgroup>
+                         </select>
+                         </label>
+                    )}
+                </div>
+
+                <label>
+                  Speed:
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={kokoroSpeed}
+                    onChange={(e) => setKokoroSpeed(parseFloat(e.target.value))}
+                    style={{ marginLeft: '5px', padding: '5px', width: '50px' }}
+                  />
+                </label>
+              </>
+            )}
+          </div>
           <div style={{ 
             width: '12px', 
             height: '12px', 
