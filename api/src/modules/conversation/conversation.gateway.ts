@@ -11,6 +11,7 @@ import { Server, WebSocket } from 'ws';
 import { DeepgramService } from '../ai-services/deepgram.service';
 import { GroqService } from '../ai-services/groq.service';
 import { OpenAiService } from '../ai-services/openai.service';
+import { KokoroService } from '../ai-services/kokoro.service';
 import { VOICE_BEHAVIOR_PROMPT } from './prompts';
 
 // Pricing Constants (USD)
@@ -52,7 +53,7 @@ export class ConversationGateway
 
   // Track sessions and configurations
   private deepgramConnections = new Map<WebSocket, any>();
-  private clientConfigs = new Map<WebSocket, { ttsProvider: 'openai' | 'deepgram'; voice: string; systemInstruction?: string }>();
+  private clientConfigs = new Map<WebSocket, { ttsProvider: 'openai' | 'deepgram' | 'kokoro'; voice: string; speed: number; systemInstruction?: string }>();
   private clientCosts = new Map<WebSocket, CostTracker>();
   
   // Audio Response Queue: Ensures audio chunks are sent in order for each client
@@ -67,6 +68,7 @@ export class ConversationGateway
     private readonly deepgramService: DeepgramService,
     private readonly groqService: GroqService,
     private readonly openAiService: OpenAiService,
+    private readonly kokoroService: KokoroService,
   ) {}
 
   handleConnection(client: WebSocket, request: any) {
@@ -76,11 +78,12 @@ export class ConversationGateway
     const urlString = request.url || '';
     const url = new URL(urlString, 'http://localhost');
     
-    const ttsProvider = (url.searchParams.get('ttsProvider') as 'openai' | 'deepgram') || 'openai';
+    const ttsProvider = (url.searchParams.get('ttsProvider') as 'openai' | 'deepgram' | 'kokoro') || 'openai';
     const voice = url.searchParams.get('voice') || 'shimmer';
+    const speed = parseFloat(url.searchParams.get('speed') || '1.0');
     const systemInstruction = url.searchParams.get('systemInstruction') || undefined;
 
-    this.clientConfigs.set(client, { ttsProvider, voice, systemInstruction });
+    this.clientConfigs.set(client, { ttsProvider, voice, speed, systemInstruction });
     
     // Initialize Cost Tracker
     const tracker: CostTracker = {
@@ -260,23 +263,48 @@ export class ConversationGateway
              // Log to terminal
             process.stdout.write(content);
             
-            // Send text token to frontend
+            // Send text token to frontend (Show everything including thoughts for debugging/transparency, or filter if requested)
+            // For now, let's send everything so the user sees the 'brain' working in the UI if we add support for it later.
             if (client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({ event: 'llm_token', data: content }));
             }
 
-            // Buffer for TTS
+            // Buffer for TTS - accumulate everything
             sentenceBuffer += content;
             
             // Check for sentence delimiters
             if (/[.?!]/.test(content)) {
-                // Found a sentence end.
-                const sentenceToSpeak = sentenceBuffer.trim();
-                sentenceBuffer = ''; // Clear buffer
-
-                if (sentenceToSpeak.length > 0) {
-                    console.log(`\nQueuing Audio Generation for: "${sentenceToSpeak}"`);
-                    this.queueAudioGeneration(client, sentenceToSpeak);
+                // Check if we are currently inside a thinking block? 
+                // Simple approach: Regex replace on the whole sentenceBuffer when queuing.
+                // We'll queue audio generation only if there is "speakable" text.
+                
+                // Let's defer the "thinking" removal to `queueAudioGeneration` or helper to keep this loop clean.
+                // However, we need to know if the "sentence" is just a thought or real text.
+                // The easiest way is to NOT split by sentence regarding the thought block.
+                
+                // If we have a closing tag </thinking>, we might want to trigger processing?
+                // Actually, standard sentence splitting might break the <thinking> tag in half.
+                // But typically thoughts come first. 
+                // Let's keep the buffer logic simple and filter in queueAudioGeneration.
+                
+                const sentenceToSpeak = sentenceBuffer.trim();   
+                
+                // Only queue if it looks like a complete sentence AND it's not just inside a thinking block (this is hard to know without state).
+                // Safer approach: Accumulate until we are sure.
+                
+                // Given the risk of splitting tags, let's look for tags explicitly.
+                // If sentenceBuffer contains open <thinking> but not closed </thinking>, DO NOT FLUSH.
+                const openCount = (sentenceBuffer.match(/<thinking>/g) || []).length;
+                const closeCount = (sentenceBuffer.match(/<\/thinking>/g) || []).length;
+                
+                if (openCount === closeCount) {
+                     // Balanced tags. We can flush.
+                     const cleanText = this.filterThinking(sentenceToSpeak);
+                     if (cleanText.length > 0) {
+                        console.log(`\nQueuing Audio Generation for: "${cleanText}"`);
+                        this.queueAudioGeneration(client, cleanText);
+                     }
+                     sentenceBuffer = ''; // Clear buffer
                 }
             }
           }
@@ -284,8 +312,11 @@ export class ConversationGateway
         
         // Handle any remaining text in buffer
         if (sentenceBuffer.trim().length > 0) {
-           console.log(`\nQueuing Final: "${sentenceBuffer}"`);
-           this.queueAudioGeneration(client, sentenceBuffer);
+           const cleanText = this.filterThinking(sentenceBuffer.trim());
+           if (cleanText.length > 0) {
+                console.log(`\nQueuing Final: "${cleanText}"`);
+                this.queueAudioGeneration(client, cleanText);
+           }
         }
         
         console.log('\nLLM Stream finished');
@@ -324,8 +355,13 @@ export class ConversationGateway
       
       if (config?.ttsProvider === 'openai') {
           // Track OpenAI Cost (Pricing is per character)
-          this.updateOpenAICost(client, text.length);
-          return await this.openAiService.generateAudio(text, config.voice as any);
+          // Add silence padding to prevent cut-off: ". " at start
+          const paddedText = `. ${text}`; 
+          
+          this.updateOpenAICost(client, paddedText.length);
+          return await this.openAiService.generateAudio(paddedText, config.voice as any);
+      } else if (config?.ttsProvider === 'kokoro') {
+          return await this.kokoroService.generateAudio(text, config.voice, config.speed);
       } else {
           // Fallback/Default to Deepgram if specified
           return await this.deepgramService.generateAudio(text);
@@ -396,4 +432,9 @@ export class ConversationGateway
           client.send(JSON.stringify(payload));
       }
   }
+    private filterThinking(text: string): string {
+        // Remove <thinking>...</thinking> blocks
+        // The 's' flag (dotall) is not supported in all JS versions of regex via literal but we can use [\s\S]
+        return text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+    }
 }
